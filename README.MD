@@ -59,4 +59,4 @@ All what you need to start it:
     npm start
 ```
 
-***Free Software, Hell Yeah! :sheep: *** 
+***Free Software, Hell Yeah!*** :sheep:
