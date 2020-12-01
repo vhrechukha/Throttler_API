@@ -36,8 +36,8 @@ You response will be
        "pastebin.com/prod/users/rshmelev": {  <- я называю это "категория"
           allow:[
            true,
-           false, <- превышен лимит больше 10 мб в день
-           false, <- также превышен лимит больше 5 в час
+           false,
+           false,
            true, 
           ],
           reason: "> 10000000 points per 1d, > 5 events per 1h"
