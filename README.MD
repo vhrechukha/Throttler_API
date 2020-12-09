@@ -1,6 +1,9 @@
 # throttler-api :hamster:
 
-[![Build Status](https://travis-ci.org/joemccann/dillinger.svg?branch=master)](https://travis-ci.org/joemccann/dillinger)
+![create with](https://img.shields.io/badge/create%20with-%F0%9F%92%96-ff69b4)
+![shpp++](https://img.shields.io/badge/shpp%2B%2B-%F0%9F%92%96-00964b)
+
+I implement this api by [shpp++](https://programming.org.ua/ua) specification.
 
 We often have to impose limits on something. Throttler pics up this problem. All the other service needs to do is to make http query.
 
@@ -17,7 +20,7 @@ POST http://localhost:3000/throttler/api/event
            { max: 100, kind: "count", per: "1d"  },
           ]
        },
-       "pastebin.com/prod/categories/free-users": {
+       "pastebin.com/prod/categories/free-cats": {
           points: 900000     
           throttlers:[
            { max: 10000000000, kind: "points", per: "1d"  },
@@ -33,7 +36,7 @@ You response will be
 {
     allow: false,
     data: {
-       "pastebin.com/prod/users/rshmelev": {  <- я называю это "категория"
+       "pastebin.com/prod/users/kotichka": {
           allow:[
            true,
            false,
@@ -42,7 +45,7 @@ You response will be
           ],
           reason: "> 10000000 points per 1d, > 5 events per 1h"
        },
-       "pastebin.com/prod/categories/free-users": { 
+       "pastebin.com/prod/categories/free-cats": { 
           allow:[
            true,
            true,
@@ -53,10 +56,9 @@ You response will be
 ```
 
 All what you need to start it:
- - make .env file(you can find example in main directory)
 ```sh
     npm i
-    npm start
+    npm start //or nodemon start
 ```
 
 ***Free Software, Hell Yeah!*** :sheep:
