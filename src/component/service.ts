@@ -30,7 +30,7 @@ const Service = {
     });
   },
 
-  async checkPoints(
+  async checkPointsSizeWithMaxPoints(
     points: number,
     maxPoints: number,
   ): Promise<IServiceResponse> {
@@ -42,7 +42,7 @@ const Service = {
     };
   },
 
-  async checkTotalPointsSize(
+  async checkAmountsOfPointsOfAllEventsPerSomeTime(
     eventName: string,
     maxPoints: number,
     time: number,
@@ -63,7 +63,7 @@ const Service = {
     };
   },
 
-  async checkTotalEvents(
+  async checkAmountOfAllEventsPerSomeTime(
     eventName: string,
     maxEvent: number,
     time: number,

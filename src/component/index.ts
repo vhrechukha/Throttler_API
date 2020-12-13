@@ -30,8 +30,7 @@ export async function throtthler(
 
         if (throttler.kind === 'points') {
           if (PerInEventRuntype.guard(throttler)) {
-            // check total points size per some period of time
-            resultOfTotalPointsSize = await service.checkTotalPointsSize(
+            resultOfTotalPointsSize = await service.checkAmountsOfPointsOfAllEventsPerSomeTime(
               event,
               throttler.max,
               throttler.per,
@@ -42,8 +41,10 @@ export async function throtthler(
             if (resultOfTotalPointsSize.reason !== '')
               failureReasonForEvent.push(resultOfTotalPointsSize.reason);
           } else {
-            // check points size with some max points
-            resultOfPoints = await service.checkPoints(points, throttler.max);
+            resultOfPoints = await service.checkPointsSizeWithMaxPoints(
+              points,
+              throttler.max,
+            );
 
             permissionsForEvent.push(resultOfPoints.allow);
 
@@ -51,9 +52,9 @@ export async function throtthler(
               failureReasonForEvent.push(resultOfPoints.reason);
           }
         }
+
         if (throttler.kind === 'count') {
-          // check amount of documents per some period of time
-          resultOfSumEvents = await service.checkTotalEvents(
+          resultOfSumEvents = await service.checkAmountOfAllEventsPerSomeTime(
             event,
             throttler.max,
             throttler.per,
