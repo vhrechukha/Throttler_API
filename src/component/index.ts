@@ -1,6 +1,6 @@
+import service from './service';
 import { HttpError } from '../error';
 import { NextFunction, Request, Response } from 'express';
-import service from './service';
 import { ResultOfEvents } from './interfaces/result-interface';
 import { PerInEventRuntype } from './interfaces/runtypes';
 
@@ -11,19 +11,18 @@ export async function throtthler(
 ): Promise<void> {
   try {
     const { events } = req.body;
-
     const resultOfEvents: ResultOfEvents = {};
     let allow = true;
 
-    let permissionOfEvent, reasonOfEvent;
+    let permissionsForEvent, failureReasonForEvent;
 
-    let resultOfTotalPointsSize, resultOfPoints, resultOfTotalEvents;
+    let resultOfTotalPointsSize, resultOfPoints, resultOfSumEvents;
 
     await service.addFakeEvents(); // it's only for fake events in DB(u can delete this line)
 
     for (const event of Object.keys(events)) {
-      permissionOfEvent = [];
-      reasonOfEvent = [];
+      permissionsForEvent = [];
+      failureReasonForEvent = [];
 
       for (const element in events[event].throttlers) {
         const { points } = events[event];
@@ -38,42 +37,42 @@ export async function throtthler(
               throttler.per,
             );
 
-            permissionOfEvent.push(resultOfTotalPointsSize.allow);
+            permissionsForEvent.push(resultOfTotalPointsSize.allow);
 
             if (resultOfTotalPointsSize.reason !== '')
-              reasonOfEvent.push(resultOfTotalPointsSize.reason);
+              failureReasonForEvent.push(resultOfTotalPointsSize.reason);
           } else {
             // check points size with some max points
             resultOfPoints = await service.checkPoints(points, throttler.max);
 
-            permissionOfEvent.push(resultOfPoints.allow);
+            permissionsForEvent.push(resultOfPoints.allow);
 
             if (resultOfPoints.reason !== '')
-              reasonOfEvent.push(resultOfPoints.reason);
+              failureReasonForEvent.push(resultOfPoints.reason);
           }
         }
         if (throttler.kind === 'count') {
           // check amount of documents per some period of time
-          resultOfTotalEvents = await service.checkTotalEvents(
+          resultOfSumEvents = await service.checkTotalEvents(
             event,
             throttler.max,
             throttler.per,
           );
 
-          permissionOfEvent.push(resultOfTotalEvents.allow);
+          permissionsForEvent.push(resultOfSumEvents.allow);
 
-          if (resultOfTotalEvents.reason !== '')
-            reasonOfEvent.push(resultOfTotalEvents.reason);
+          if (resultOfSumEvents.reason !== '')
+            failureReasonForEvent.push(resultOfSumEvents.reason);
         }
       }
 
-      if (reasonOfEvent.length) {
+      if (failureReasonForEvent.length) {
         resultOfEvents[event] = {
-          allow: permissionOfEvent,
-          reason: reasonOfEvent.join(' ,'),
+          allow: permissionsForEvent,
+          reason: failureReasonForEvent.join(' ,'),
         };
         allow = false;
-      } else resultOfEvents[event] = { allow: permissionOfEvent };
+      } else resultOfEvents[event] = { allow: permissionsForEvent };
     }
 
     if (allow) service.addEvents(events);

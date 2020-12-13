@@ -4,7 +4,7 @@ import getDate from '../helpers/getDate';
 import { Events } from './interfaces/events-interface';
 const events: EventDB[] = [];
 
-const UserService = {
+const Service = {
   async addFakeEvents(): Promise<void> {
     for (let i = 0; i < 5; i++) {
       events.push({
@@ -20,7 +20,7 @@ const UserService = {
     }
   },
 
-  addEvents(data: Events[]) {
+  addEvents(data: Events[]): void {
     Object.keys(data).forEach(event => {
       events.push({
         event,
@@ -34,11 +34,11 @@ const UserService = {
     points: number,
     maxPoints: number,
   ): Promise<IServiceResponse> {
-    const allow = points < maxPoints;
+    const isAllow = points < maxPoints;
 
     return {
-      allow,
-      reason: allow ? '' : `> ${maxPoints} points`,
+      allow: isAllow,
+      reason: isAllow ? '' : `> ${maxPoints} points`,
     };
   },
 
@@ -55,11 +55,11 @@ const UserService = {
       })
       .reduce((total: number, e) => total + e.points, 0);
 
-    const allow = totalPoints === undefined || totalPoints < maxPoints;
+    const isAllow = totalPoints === undefined || totalPoints < maxPoints;
 
     return {
-      allow,
-      reason: allow ? '' : `> ${maxPoints} points per ${time}`,
+      allow: isAllow,
+      reason: isAllow ? '' : `> ${maxPoints} points per ${time}`,
     };
   },
 
@@ -74,13 +74,13 @@ const UserService = {
       }
     });
 
-    const allow = totalPoints === undefined || totalPoints.length < maxEvent;
+    const isAllow = totalPoints === undefined || totalPoints.length < maxEvent;
 
     return {
-      allow,
-      reason: allow ? '' : `> ${maxEvent} points per ${time}`,
+      allow: isAllow,
+      reason: isAllow ? '' : `> ${maxEvent} points per ${time}`,
     };
   },
 };
 
-export default UserService;
+export default Service;
