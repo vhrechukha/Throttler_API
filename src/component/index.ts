@@ -75,9 +75,10 @@ export async function throtthler(
         allow = false;
       } else {
         resultOfEvents[event] = { allow: permissionsForEvent };
-        service.addEvents(events);
       }
     }
+
+    if (allow) service.addEvents(events);
 
     res.status(200).json({
       allow,
