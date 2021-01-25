@@ -1,1 +1,1 @@
-{"version":3,"file":"collectData.d.ts","sourceRoot":"","sources":["../../src/helpers/collectData.ts"],"names":[],"mappings":"AAAA,iBAAS,WAAW,CAAC,OAAO,EAAE,GAAG,EAAE,QAAQ,EAAE,GAAG,GAAG,IAAI,CAStD;AAED,eAAe,WAAW,CAAC"}
+{"version":3,"file":"collectData.d.ts","sourceRoot":"","sources":["../../src/helpers/collectData.ts"],"names":[],"mappings":"AAAA,iBAAS,WAAW,CAAC,OAAO,EAAE,GAAG,EAAE,QAAQ,EAAE,GAAG,GAAG,IAAI,CAQtD;AAED,eAAe,WAAW,CAAC"}

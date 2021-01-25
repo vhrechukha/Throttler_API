@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 function collectData(request, callback) {
     let data = '';
     request.on('data', (chunk) => {
-        console.log(chunk);
         data += chunk;
     });
     request.on('end', () => {

@@ -35,7 +35,7 @@ let events = [
 const server = http.createServer((req, res) => {
     if (req.url === '/api/event' && req.method === 'POST') {
         collectData_1.default(req, async (formattedData) => {
-            const data = await index_1.throtthler(formattedData, events, Date.now());
+            const data = await index_1.throttler(formattedData, events, Date.now());
             if (data.newState !== null)
                 events = data.newState;
             res.writeHead(200, { 'Content-Type': 'application/json' });
