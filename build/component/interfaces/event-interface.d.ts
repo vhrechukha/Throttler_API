@@ -8,5 +8,5 @@ interface Event {
         }>;
     };
 }
-
 export default Event;
+//# sourceMappingURL=event-interface.d.ts.map

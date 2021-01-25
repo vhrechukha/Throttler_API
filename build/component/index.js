@@ -1,84 +1,56 @@
-import service from './service';
-
-import Event from './interfaces/event-interface';
-import ThrottlerParams from './interfaces/throttlerParams-interface';
-import ListOfVerifications from './interfaces/listOfVerifications-interface';
-import { PerInEventRuntypeExist, PerInEventRuntypeNotExist } from './interfaces/runtypes';
-import ResultOfEventsVerifications from './interfaces/resultOfEventsVerifications-interface';
-import EventEntry from './interfaces/eventEntry-interface';
-
-export async function throttler(
-    data: {
-        events: Event;
-    },
-    state: EventEntry[],
-    now: number
-): Promise<{
-    allow: boolean;
-    data: ResultOfEventsVerifications;
-    newState: EventEntry[] | null;
-}> {
-    const { events }: { events: Event } = data;
-    const result: ListOfVerifications = {
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.throtthler = void 0;
+const service_1 = __importDefault(require("./service"));
+const runtypes_1 = require("./interfaces/runtypes");
+async function throtthler(data, state, now) {
+    const { events } = data;
+    const result = {
         resultOfTotalPointsSize: { allow: false, reason: '' },
         resultOfPoints: { allow: false, reason: '' },
         resultOfSumEvents: { allow: false, reason: '' },
     };
-
     for (const event of Object.keys(events)) {
         for (const element in events[event].throttlers) {
-            const { points }: { points: number } = events[event];
-
-            const throttler: ThrottlerParams = events[event].throttlers[element];
-
+            const { points } = events[event];
+            const throttler = events[event].throttlers[element];
             if (throttler.kind === 'points') {
-                if (PerInEventRuntypeExist.guard(throttler)) {
-                    result.resultOfTotalPointsSize = await service.checkAmountOfPointsOfAllEventsPerSomeTime(
-                        event,
-                        throttler.max,
-                        throttler.per,
-                        now,
-                        state
-                    );
-                    service.writeResult(result.resultOfTotalPointsSize);
-                } else if (PerInEventRuntypeNotExist.guard(throttler)) {
-                    result.resultOfPoints = await service.checkPointsSizeWithMaxPoints(points, throttler.max);
-                    service.writeResult(result.resultOfPoints);
+                if (runtypes_1.PerInEventRuntypeExist.guard(throttler)) {
+                    result.resultOfTotalPointsSize = await service_1.default.checkAmountOfPointsOfAllEventsPerSomeTime(event, throttler.max, throttler.per, now, state);
+                    service_1.default.writeResult(result.resultOfTotalPointsSize);
+                }
+                else if (runtypes_1.PerInEventRuntypeNotExist.guard(throttler)) {
+                    result.resultOfPoints = await service_1.default.checkPointsSizeWithMaxPoints(points, throttler.max);
+                    service_1.default.writeResult(result.resultOfPoints);
                 }
             }
-
             if (throttler.kind === 'count') {
-                if (PerInEventRuntypeExist.guard(throttler)) {
-                    result.resultOfSumEvents = await service.checkAmountOfAllEventsPerSomeTime(
-                        event,
-                        throttler.max,
-                        throttler.per,
-                        now,
-                        state
-                    );
-                    service.writeResult(result.resultOfSumEvents);
+                if (runtypes_1.PerInEventRuntypeExist.guard(throttler)) {
+                    result.resultOfSumEvents = await service_1.default.checkAmountOfAllEventsPerSomeTime(event, throttler.max, throttler.per, now, state);
+                    service_1.default.writeResult(result.resultOfSumEvents);
                 }
             }
         }
-        service.writeResultOfEvent(event);
+        service_1.default.writeResultOfEvent(event);
     }
-
-    const resultOfVerificationEvents = service.getResultOfEventsVerification();
+    const resultOfVerificationEvents = service_1.default.getResultOfEventsVerification();
     if (resultOfVerificationEvents.allow) {
         return {
             allow: resultOfVerificationEvents.allow,
             data: resultOfVerificationEvents.result,
-            newState: service.addEvents(events, now, state),
+            newState: service_1.default.addEvents(events, now, state),
         };
     }
-
     return {
         allow: resultOfVerificationEvents.allow,
         data: resultOfVerificationEvents.result,
         newState: null,
     };
 }
-
+exports.throtthler = throtthler;
 /*
 export async function throtthler(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -136,3 +108,4 @@ export async function throtthler(req: Request, res: Response, next: NextFunction
         next(new HttpError(error.message.status, error.message));
     }
 }*/
+//# sourceMappingURL=index.js.map

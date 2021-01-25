@@ -5,7 +5,7 @@
 
 I implement this api by [shpp++](https://programming.org.ua/ua) specification.
 
-We often have to impose limits on something. Throttler pics up this problem. All the other service needs to do is to make http query.
+We often have to impose limits on something. Throttler pics up this problem. All the other service needs to do is to make http query. **BE AWARE THIS API CAN MISS MORE DATA!**
 
 ```sh
 POST http://localhost:3000/throttler/api/event

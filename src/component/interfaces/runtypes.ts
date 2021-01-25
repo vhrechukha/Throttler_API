@@ -1,10 +1,20 @@
-import { Record, Number, Static } from 'runtypes';
+import { Record, Number, Static, String, Union, Literal } from 'runtypes';
 
-const PerInEventRuntype = Record({
-  per: Number,
-  max: Number,
+const Kind = Union(Literal('points'), Literal('count'));
+
+const PerInEventRuntypeExist = Record({
+    per: String,
+    max: Number,
+    kind: Kind,
 });
 
-type PerInEventRuntype = Static<typeof PerInEventRuntype>;
+type PerInEventRuntypeExist = Static<typeof PerInEventRuntypeExist>;
 
-export { PerInEventRuntype };
+const PerInEventRuntypeNotExist = Record({
+    max: Number,
+    kind: Kind,
+});
+
+type PerInEventRuntypeNotExist = Static<typeof PerInEventRuntypeNotExist>;
+
+export { PerInEventRuntypeExist, PerInEventRuntypeNotExist };

@@ -1,33 +1,32 @@
 import * as http from 'http';
-import * as express from 'express';
-import * as Middleware from './middleware';
-import * as serverHandlers from './serverHandlers';
-import * as component from './component';
+import { throttler } from './component/index';
+import collectData from './helpers/collectData';
+import Event from './component/interfaces/event-interface';
+import EventEntry from './component/interfaces/eventEntry-interface';
 
-/*
- * Configure app
- */
-const app: express.Application = express();
+let events: EventEntry[] = [
+    {
+        event: 'pastebin.com/prod/users/kotik',
+        points: 456,
+        date: Date.now(),
+    },
+];
 
-Middleware.configure(app);
+const server = http.createServer((req, res) => {
+    if (req.url === '/api/event' && req.method === 'POST') {
+        collectData(req, async (formattedData: { events: Event }) => {
+            const data = await throttler(formattedData, events, Date.now());
+            if (data.newState !== null) events = data.newState;
 
-app.post('/api/event', component.throtthler);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.write(JSON.stringify(data));
+            res.end();
+        });
+    } else {
+        res.writeHead(404);
+        res.write('Not Found');
+        res.end();
+    }
+});
 
-app.set('port', process.env.PORT || 3000);
-app.set('secret', process.env.SECRET || 'superSecret');
-
-const Server: http.Server = http.createServer(app);
-
-/**
- * Binds and listens for connections on the specified host
- */
-Server.listen(app.get('port'));
-
-/**
- * Server Events
- */
-Server.on('error', (error: Error) =>
-  serverHandlers.onError(error, app.get('port')),
-);
-
-Server.on('listening', serverHandlers.onListening.bind(Server));
+server.listen(3000);
