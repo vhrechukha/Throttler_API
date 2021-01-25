@@ -1,1 +1,0 @@
-{"version":3,"file":"listOfVerifications-interface.d.ts","sourceRoot":"","sources":["../../../src/component/interfaces/listOfVerifications-interface.ts"],"names":[],"mappings":"AAAA,OAAO,kCAAkC,MAAM,kCAAkC,CAAC;AAElF,UAAU,mBAAmB;IACzB,uBAAuB,EAAE,kCAAkC,CAAC;IAC5D,cAAc,EAAE,kCAAkC,CAAC;IACnD,iBAAiB,EAAE,kCAAkC,CAAC;CACzD;AAED,eAAe,mBAAmB,CAAC"}

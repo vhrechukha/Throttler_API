@@ -1,1 +1,0 @@
-{"version":3,"file":"throttlerParams-interface.d.ts","sourceRoot":"","sources":["../../../src/component/interfaces/throttlerParams-interface.ts"],"names":[],"mappings":"AAAA,UAAU,eAAe;IACrB,GAAG,EAAE,MAAM,CAAC;IACZ,IAAI,EAAE,MAAM,CAAC;IACb,GAAG,CAAC,EAAE,MAAM,CAAC;CAChB;AAED,eAAe,eAAe,CAAC"}
