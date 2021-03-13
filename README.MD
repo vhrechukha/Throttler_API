@@ -55,10 +55,11 @@ You response will be
 }
 ```
 
-All what you need to start it:
+Commands:
 ```sh
     npm i
-    npm start //or nodemon start
+    npm start
+    npm test
 ```
 
 ***Free Software, Hell Yeah!*** :sheep:

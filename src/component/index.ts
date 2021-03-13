@@ -1,69 +1,61 @@
 import service from './service';
 
-import Event from './interfaces/event-interface';
-import ThrottlerParams from './interfaces/throttlerParams-interface';
-import ListOfVerifications from './interfaces/listOfVerifications-interface';
-import { PerInEventRuntypeExist, PerInEventRuntypeNotExist } from './interfaces/runtypes';
-import ResultOfEventsVerifications from './interfaces/resultOfEventsVerifications-interface';
-import EventEntry from './interfaces/eventEntry-interface';
+import { Throtthler, EventEntry } from '../helpers/runtypes';
+import { ListOfVerifications, ResultOfEventsVerifications } from '../helpers/interfaces';
 
 export async function throttler(
-    data: {
-        events: Event;
-    },
-    state: EventEntry[],
+    events: Throtthler,
+    state: EventEntry,
     now: number
 ): Promise<{
     allow: boolean;
     data: ResultOfEventsVerifications;
-    newState: EventEntry[] | null;
+    newState: EventEntry | null;
 }> {
-    const { events }: { events: Event } = data;
     const result: ListOfVerifications = {
         resultOfTotalPointsSize: { allow: false, reason: '' },
         resultOfPoints: { allow: false, reason: '' },
         resultOfSumEvents: { allow: false, reason: '' },
     };
 
-    for (const event of Object.keys(events)) {
-        for (const element in events[event].throttlers) {
-            const { points }: { points: number } = events[event];
-
-            const throttler: ThrottlerParams = events[event].throttlers[element];
+    for (const eventName of Object.keys(events)) {
+        for (const throttler of events[eventName].throttlers) {
+            const { points }: { points: number } = events[eventName];
 
             if (throttler.kind === 'points') {
-                if (PerInEventRuntypeExist.guard(throttler)) {
+                if (throttler.per !== undefined) {
                     result.resultOfTotalPointsSize = await service.checkAmountOfPointsOfAllEventsPerSomeTime(
-                        event,
+                        eventName,
                         throttler.max,
                         throttler.per,
                         now,
                         state
                     );
-                    service.writeResult(result.resultOfTotalPointsSize);
-                } else if (PerInEventRuntypeNotExist.guard(throttler)) {
+                    service.writeResultOfThrottler(result.resultOfTotalPointsSize);
+                } else if (throttler.per === undefined) {
                     result.resultOfPoints = await service.checkPointsSizeWithMaxPoints(points, throttler.max);
-                    service.writeResult(result.resultOfPoints);
+                    service.writeResultOfThrottler(result.resultOfPoints);
                 }
             }
 
             if (throttler.kind === 'count') {
-                if (PerInEventRuntypeExist.guard(throttler)) {
+                if (throttler.per !== undefined) {
                     result.resultOfSumEvents = await service.checkAmountOfAllEventsPerSomeTime(
-                        event,
+                        eventName,
                         throttler.max,
                         throttler.per,
                         now,
                         state
                     );
-                    service.writeResult(result.resultOfSumEvents);
+                    service.writeResultOfThrottler(result.resultOfSumEvents);
                 }
             }
         }
-        service.writeResultOfEvent(event);
+        service.writeResultOfEvent(eventName);
     }
 
     const resultOfVerificationEvents = service.getResultOfEventsVerification();
+
     if (resultOfVerificationEvents.allow) {
         return {
             allow: resultOfVerificationEvents.allow,

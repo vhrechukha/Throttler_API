@@ -1,32 +1,42 @@
+import 'dotenv/config';
 import * as http from 'http';
-import { throttler } from './component/index';
-import collectData from './helpers/collectData';
-import Event from './component/interfaces/event-interface';
-import EventEntry from './component/interfaces/eventEntry-interface';
+import * as express from 'express';
+import * as component from './component';
+import bodyParser from 'body-parser';
 
-let events: EventEntry[] = [
-    {
-        event: 'pastebin.com/prod/users/kotik',
-        points: 456,
-        date: Date.now(),
-    },
-];
+import { EventEntry, Throtthler } from './helpers/runtypes';
+import * as crones from './crones';
 
-const server = http.createServer((req, res) => {
-    if (req.url === '/api/event' && req.method === 'POST') {
-        collectData(req, async (formattedData: { events: Event }) => {
-            const data = await throttler(formattedData, events, Date.now());
-            if (data.newState !== null) events = data.newState;
+export const state: EventEntry = {};
 
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.write(JSON.stringify(data));
-            res.end();
-        });
-    } else {
-        res.writeHead(404);
-        res.write('Not Found');
-        res.end();
+const app: express.Application = express.default();
+
+app.use(bodyParser.json());
+
+app.post('/api/event', async (req, res) => {
+    const { events } = req.body;
+
+    if (Throtthler.guard(events)) {
+        const data = await component.throttler(events, state, Date.now());
+
+        res.status(200).json(data);
     }
 });
 
-server.listen(3000);
+app.set('port', process.env.PORT);
+app.set('secret', process.env.SECRET);
+
+const Server: http.Server = http.createServer(app);
+
+Server.listen(app.get('port'), () => {
+    console.log(`Listening on ${app.get('port')}`);
+
+    crones.checkEvery7Day.start(),
+        crones.checkEveryDay.start(),
+        crones.checkEvery12Hour.start(),
+        crones.checkEvery2Hour.start(),
+        crones.checkEveryHour.start();
+    crones.checkEvery30Minute.start();
+    crones.checkEvery5Minute.start();
+    crones.checkEvery1Minute.start();
+});
