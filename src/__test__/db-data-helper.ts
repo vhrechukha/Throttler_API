@@ -1,11 +1,9 @@
 import _ from 'lodash';
-import colors from 'colors';
 import * as faker from 'faker';
 import { performance } from 'perf_hooks';
 
 import { EventEntry } from '../helpers/runtypes';
 import { eventEntryReference } from '../helpers/references';
-import { time } from 'console';
 
 const state: EventEntry = {};
 const dates: ('7d' | '1d' | '12h' | '2h' | '1h' | '30m' | '5m' | '1m')[] = ['7d', '1d', '12h', '2h', '1h', '30m', '5m', '1m'];
