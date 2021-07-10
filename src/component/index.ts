@@ -46,7 +46,8 @@ export async function throttler(events: ThrottlerRequest, state: ThrottlerState,
     }
 
     return {
-        allow: resultOfEventsVerifications,
-        state: service.addEvents(state, events, now),
+        allow,
+        data: resultOfEventsVerifications,
+        state: allow ? service.addEvents(state, events, now) : null,
     };
 }
