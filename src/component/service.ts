@@ -1,133 +1,11 @@
-import _ from 'lodash';
+import { PerType, ThrottlerRequest, ThrottlerState } from '../helpers/runtypes';
+import { ResultOfVerification } from '../helpers/interfaces';
 
-import dateDiff from '../helpers/getDateDiff';
+import getDateDiff from '../helpers/getDateDiff';
+import getDateResolution from '../helpers/getDateResolution';
 import { eventEntryReference } from '../helpers/references';
-import { Throtthler, EventEntry } from '../helpers/runtypes';
-import {
-    ResultOfEventsVerifications,
-    ResponseOfResultOfEventsVerification,
-    GroupOfEventVerifications,
-    ResultOfVerification,
-} from '../helpers/interfaces';
-
-let allow: boolean[] = [];
-let validationResult: GroupOfEventVerifications = {
-    allow: [],
-    reason: [],
-};
-
-const resultOfEventsVerification: ResultOfEventsVerifications = {};
 
 const Service = {
-    getResultOfEventsVerification(): ResponseOfResultOfEventsVerification {
-        const result = {
-            result: resultOfEventsVerification,
-            allow: allow.some(e => e === false) ? false : true,
-        };
-
-        allow = [];
-
-        return result;
-    },
-    writeResultOfThrottler(result: ResultOfVerification): void {
-        validationResult.allow.push(result.allow);
-        if (result.reason !== '') validationResult.reason.push(result.reason);
-    },
-    writeResultOfEvent(eventName: string): void {
-        let reasonR = '';
-
-        if (validationResult.reason.length) {
-            reasonR = validationResult.reason.join(', ');
-
-            resultOfEventsVerification[eventName] = {
-                allow: validationResult.allow,
-                reason: reasonR,
-            };
-
-            allow.push(false);
-        } else if (!validationResult.reason.length) {
-            resultOfEventsVerification[eventName] = {
-                allow: validationResult.allow,
-            };
-
-            allow.push(true);
-        }
-
-        validationResult = {
-            allow: [],
-            reason: [],
-        };
-    },
-    addEvents(events: Throtthler, now: number, state: EventEntry): EventEntry {
-        Object.keys(events).forEach(async eventName => {
-            const eventEntry = {
-                points: events[eventName].points,
-                date: now,
-            };
-
-            if (!(eventName in state)) {
-                state[eventName] = _.cloneDeep(eventEntryReference);
-            }
-
-            this.addEventAndRecalcuateResult(state, eventName, '7d', eventEntry);
-            this.addEventAndRecalcuateResult(state, eventName, '1d', eventEntry);
-            this.addEventAndRecalcuateResult(state, eventName, '12h', eventEntry);
-            this.addEventAndRecalcuateResult(state, eventName, '2h', eventEntry);
-            this.addEventAndRecalcuateResult(state, eventName, '1h', eventEntry);
-            this.addEventAndRecalcuateResult(state, eventName, '30m', eventEntry);
-            this.addEventAndRecalcuateResult(state, eventName, '5m', eventEntry);
-            this.addEventAndRecalcuateResult(state, eventName, '1m', eventEntry);
-        });
-
-        return state;
-    },
-    addEventAndRecalcuateResult(
-        state: EventEntry,
-        eventName: string,
-        time: '7d' | '1d' | '12h' | '2h' | '1h' | '30m' | '5m' | '1m',
-        record: {
-            date: number;
-            points: number;
-        }
-    ): EventEntry {
-        state[eventName][time].events.push(record);
-
-        state[eventName][time].result.count = state[eventName][time].events.length;
-        state[eventName][time].result.points = state[eventName][time].events
-            .map(event => event.points)
-            .reduce((prev, next) => prev + next);
-
-        state[eventName][time].result.lastUpdate = Date.now();
-
-        return state;
-    },
-    removeInactiveRecordsAndRecalcuateResult(
-        state: EventEntry,
-        time: '7d' | '1d' | '12h' | '2h' | '1h' | '30m' | '5m' | '1m'
-    ): EventEntry {
-        const timeOfExpire = dateDiff[time];
-
-        for (const eventName in state) {
-            const dbDate = Date.now() - state[eventName][time].result.lastUpdate;
-
-            if (dbDate > timeOfExpire) {
-                const activeRecords = state[eventName][time].events.filter(
-                    (event: { date: number }) => Date.now() - event.date > timeOfExpire
-                );
-
-                state[eventName][time].events = activeRecords;
-
-                state[eventName][time].result.count = activeRecords.length;
-                state[eventName][time].result.points = activeRecords
-                    .map(event => event.points)
-                    .reduce((prev, next) => prev + next, 0);
-
-                state[eventName][time].result.lastUpdate = Date.now();
-            }
-        }
-        console.log(`checked events on ${time}`);
-        return state;
-    },
     async checkPointsSizeWithMaxPoints(points: number, maxPoints: number): Promise<ResultOfVerification> {
         const Allow = points < maxPoints;
 
@@ -136,59 +14,172 @@ const Service = {
             reason: Allow ? '' : `> ${maxPoints} points`,
         };
     },
-    async checkAmountOfPointsOfAllEventsPerSomeTime(
-        eventName: string,
-        maxPoints: number,
-        time: '7d' | '1d' | '12h' | '2h' | '1h' | '30m' | '5m' | '1m',
-        now: number,
-        state: EventEntry
+    async checkAmountPerSomeTimeOf(
+        kind: string,
+        per: PerType,
+        max: number,
+        state: ThrottlerState,
+        eventName: string
     ): Promise<ResultOfVerification> {
-        let Allow = true;
-        const timeOfExpire = dateDiff[time];
+        let amount = 0;
 
-        if (eventName in state) {
-            const dbDate = now - state[eventName][time].result.lastUpdate;
+        const eventInState = state[eventName];
 
-            if (dbDate > timeOfExpire) {
-                this.removeInactiveRecordsAndRecalcuateResult(state, time);
-            }
-
-            const totalPoints = state[eventName][time].result.points;
-
-            Allow = totalPoints < maxPoints;
+        if (!eventInState || !eventInState[per]) {
+            return {
+                allow: true,
+                reason: '',
+            };
         }
+
+        const eventsInEventInState = eventInState[per]?.events!;
+
+        if (kind === 'count') amount = eventsInEventInState.reduce((a: number, event) => (event ? a + event.count : 0), 0);
+        else amount = eventsInEventInState.reduce((a: number, event) => (event ? a + event.points : 0), 0);
+
+        const Allow = max > amount;
 
         return {
             allow: Allow,
-            reason: Allow ? '' : `> ${maxPoints} points per ${time}`,
+            reason: Allow ? '' : `> ${max} ${kind} per ${per}`,
         };
     },
+    addEvents(state: ThrottlerState, events: ThrottlerRequest, now: number): ThrottlerState {
+        for (const eventName of Object.keys(events)) {
+            for (const throttler of events[eventName].throttlers) {
+                const { points }: { points: number } = events[eventName];
+                const throttlerPer = throttler.per;
 
-    async checkAmountOfAllEventsPerSomeTime(
-        eventName: string,
-        maxEvent: number,
-        time: '7d' | '1d' | '12h' | '2h' | '1h' | '30m' | '5m' | '1m',
-        now: number,
-        state: EventEntry
-    ): Promise<ResultOfVerification> {
-        let Allow = true;
-        const timeOfExpire = dateDiff[time];
+                if (throttlerPer) {
+                    const throttlerResolution = throttler.resolution || getDateResolution[throttlerPer];
+                    if (!state[eventName] || !state[eventName][throttlerPer]) {
+                        const array = new Array(throttlerResolution - 1).fill(null);
 
-        if (eventName in state) {
-            const dbDate = now - state[eventName][time].result.lastUpdate;
+                        state[eventName] = {
+                            [throttlerPer]: {
+                                events: [
+                                    ...array,
+                                    {
+                                        count: 1,
+                                        points,
+                                    },
+                                ],
+                                timestamp: now,
+                                timeshift: now,
+                            },
+                        };
 
-            if (dbDate > timeOfExpire) {
-                this.removeInactiveRecordsAndRecalcuateResult(state, time);
+                        break;
+                    }
+
+                    let eventInState = state[eventName][throttlerPer]!;
+
+                    if (
+                        !eventInState.events ||
+                        !eventInState.timeshift ||
+                        !eventInState.timestamp ||
+                        eventInState.events.length !== throttlerResolution
+                    ) {
+                        const array = new Array(throttlerResolution - 1).fill(null);
+
+                        state[eventName][throttlerPer] = {
+                            events: [
+                                ...array,
+                                {
+                                    count: 1,
+                                    points,
+                                },
+                            ],
+                            timestamp: now,
+                            timeshift: now,
+                        };
+                        break;
+                    }
+
+                    const throttlerResolutionDefault = eventInState.events.length;
+                    const timestamp = eventInState.timestamp + getDateDiff[throttlerPer] / throttlerResolutionDefault;
+
+                    if (timestamp > now) {
+                        const lastBlockInEvents = eventInState.events[throttlerResolutionDefault - 1];
+
+                        if (!lastBlockInEvents) {
+                            eventInState.events[throttlerResolutionDefault - 1] = {
+                                count: 1,
+                                points: points,
+                            };
+                            eventInState = {
+                                events: { ...eventInState.events },
+                                timestamp: now,
+                                timeshift: now,
+                            };
+                        } else {
+                            eventInState.events[throttlerResolutionDefault - 1] = {
+                                count: lastBlockInEvents.count + 1,
+                                points: lastBlockInEvents.points + points,
+                            };
+
+                            eventInState = {
+                                events: { ...eventInState.events },
+                                timestamp: now,
+                                timeshift: now,
+                            };
+                        }
+
+                        break;
+                    }
+
+                    if (timestamp < now) {
+                        const timeBetweenDates = Math.floor(now - timestamp);
+                        const timeInBlock = getDateDiff[throttlerPer] / throttlerResolutionDefault;
+
+                        const blocksNeedToDelete = Math.floor(timeBetweenDates / timeInBlock);
+
+                        if (blocksNeedToDelete <= 0) break;
+
+                        if (blocksNeedToDelete === 1) eventInState.events.shift();
+                        else {
+                            if (blocksNeedToDelete > throttlerResolutionDefault) {
+                                eventInState.events.fill(null);
+
+                                let spliceTo = (blocksNeedToDelete % 1000) % 100;
+
+                                if (spliceTo > throttlerResolutionDefault) {
+                                    if (throttlerResolutionDefault >= 10) {
+                                        spliceTo = spliceTo - throttlerResolutionDefault;
+                                    } else spliceTo = spliceTo % 10;
+                                }
+
+                                eventInState.events.splice(0, spliceTo);
+                            } else {
+                                eventInState.events.splice(0, blocksNeedToDelete);
+                            }
+                        }
+
+                        eventInState.events.push({
+                            count: 1,
+                            points: points,
+                        });
+
+                        const eventsLength = eventInState.events.length;
+                        const startAt = eventsLength === 0 ? 0 : eventsLength;
+
+                        eventInState.events.length = throttlerResolutionDefault;
+
+                        eventInState.events.fill(null, startAt, throttlerResolutionDefault);
+
+                        eventInState = {
+                            events: eventInState.events,
+                            timestamp: now,
+                            timeshift: now,
+                        };
+
+                        break;
+                    }
+                }
             }
-
-            const totalPoints = state[eventName][time].result.count;
-            Allow = totalPoints < maxEvent;
         }
 
-        return {
-            allow: Allow,
-            reason: Allow ? '' : `> ${maxEvent} points per ${time}`,
-        };
+        return state;
     },
 };
 

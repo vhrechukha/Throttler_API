@@ -1,68 +1,46 @@
 const eventEntryReference = {
     '7d': {
-        events: [],
-        result: {
-            lastUpdate: 0,
-            points: 0,
-            count: 0,
-        },
+        events: null,
+        timestamp: null,
+        timeshift: null,
     },
     '1d': {
-        events: [],
-        result: {
-            lastUpdate: 0,
-            points: 0,
-            count: 0,
-        },
+        events: null,
+        timestamp: null,
+        timeshift: null,
     },
     '12h': {
-        events: [],
-        result: {
-            lastUpdate: 0,
-            points: 0,
-            count: 0,
-        },
-    },
-    '2h': {
-        events: [],
-        result: {
-            lastUpdate: 0,
-            points: 0,
-            count: 0,
-        },
+        events: null,
+        timestamp: null,
+        timeshift: null,
     },
     '1h': {
-        events: [],
-        result: {
-            lastUpdate: 0,
-            points: 0,
-            count: 0,
-        },
-    },
-    '30m': {
-        events: [],
-        result: {
-            lastUpdate: 0,
-            points: 0,
-            count: 0,
-        },
-    },
-    '5m': {
-        events: [],
-        result: {
-            lastUpdate: 0,
-            points: 0,
-            count: 0,
-        },
+        events: null,
+        timestamp: null,
+        timeshift: null,
     },
     '1m': {
-        events: [],
-        result: {
-            lastUpdate: 0,
-            points: 0,
-            count: 0,
-        },
+        events: null,
+        timestamp: null,
+        timeshift: null,
+    },
+    '2h': {
+        events: null,
+        timestamp: null,
+        timeshift: null,
+    },
+    '30m': {
+        events: null,
+        timestamp: null,
+        timeshift: null,
+    },
+    '5m': {
+        events: null,
+        timestamp: null,
+        timeshift: null,
     },
 };
 
-export { eventEntryReference };
+export {
+    eventEntryReference,
+};

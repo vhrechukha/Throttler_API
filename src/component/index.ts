@@ -1,72 +1,52 @@
 import service from './service';
 
-import { Throtthler, EventEntry } from '../helpers/runtypes';
-import { ListOfVerifications, ResultOfEventsVerifications } from '../helpers/interfaces';
+import { ThrottlerRequest, ThrottlerState } from '../helpers/runtypes';
+import { ResultOfEventsVerifications } from '../helpers/interfaces';
 
-export async function throttler(
-    events: Throtthler,
-    state: EventEntry,
-    now: number
-): Promise<{
-    allow: boolean;
-    data: ResultOfEventsVerifications;
-    newState: EventEntry | null;
-}> {
-    const result: ListOfVerifications = {
-        resultOfTotalPointsSize: { allow: false, reason: '' },
-        resultOfPoints: { allow: false, reason: '' },
-        resultOfSumEvents: { allow: false, reason: '' },
-    };
+export async function throttler(events: ThrottlerRequest, state: ThrottlerState, now: number): Promise<any> {
+    let allow;
+    const resultOfEventsVerifications: ResultOfEventsVerifications = {};
 
     for (const eventName of Object.keys(events)) {
+        resultOfEventsVerifications[eventName] = {
+            allow: [],
+            reason: '',
+        };
+
         for (const throttler of events[eventName].throttlers) {
             const { points }: { points: number } = events[eventName];
+            const resultOfEvent = resultOfEventsVerifications[eventName];
 
-            if (throttler.kind === 'points') {
-                if (throttler.per !== undefined) {
-                    result.resultOfTotalPointsSize = await service.checkAmountOfPointsOfAllEventsPerSomeTime(
-                        eventName,
-                        throttler.max,
-                        throttler.per,
-                        now,
-                        state
-                    );
-                    service.writeResultOfThrottler(result.resultOfTotalPointsSize);
-                } else if (throttler.per === undefined) {
-                    result.resultOfPoints = await service.checkPointsSizeWithMaxPoints(points, throttler.max);
-                    service.writeResultOfThrottler(result.resultOfPoints);
+            if (throttler.per) {
+                const result = await service.checkAmountPerSomeTimeOf(
+                    throttler.kind,
+                    throttler.per,
+                    throttler.max,
+                    state,
+                    eventName
+                );
+
+                resultOfEvent.allow.push(result.allow);
+
+                if (result.reason) {
+                    resultOfEvent.reason = resultOfEvent.reason?.concat(result.reason);
+                    allow = false;
                 }
-            }
+            } else {
+                const result = await service.checkPointsSizeWithMaxPoints(points, throttler.max);
 
-            if (throttler.kind === 'count') {
-                if (throttler.per !== undefined) {
-                    result.resultOfSumEvents = await service.checkAmountOfAllEventsPerSomeTime(
-                        eventName,
-                        throttler.max,
-                        throttler.per,
-                        now,
-                        state
-                    );
-                    service.writeResultOfThrottler(result.resultOfSumEvents);
+                resultOfEvent.allow.push(result.allow);
+
+                if (result.reason) {
+                    resultOfEvent.reason = resultOfEvent.reason?.concat(result.reason);
+                    allow = false;
                 }
             }
         }
-        service.writeResultOfEvent(eventName);
-    }
-
-    const resultOfVerificationEvents = service.getResultOfEventsVerification();
-
-    if (resultOfVerificationEvents.allow) {
-        return {
-            allow: resultOfVerificationEvents.allow,
-            data: resultOfVerificationEvents.result,
-            newState: service.addEvents(events, now, state),
-        };
     }
 
     return {
-        allow: resultOfVerificationEvents.allow,
-        data: resultOfVerificationEvents.result,
-        newState: null,
+        allow: resultOfEventsVerifications,
+        state: service.addEvents(state, events, now),
     };
 }

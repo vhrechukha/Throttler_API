@@ -21,9 +21,8 @@ interface ResultOfVerification {
 }
 
 interface ListOfVerifications {
-    resultOfTotalPointsSize: { allow: boolean; reason: string };
-    resultOfPoints: { allow: boolean; reason: string };
-    resultOfSumEvents: { allow: boolean; reason: string };
+    totalPointsSize: { allow: boolean; reason: string };
+    points: { allow: boolean; reason: string };
 }
 
 export {
