@@ -6,54 +6,51 @@
 I implement this api by [shpp++](https://programming.org.ua/ua) specification.
 
 We often have to impose limits on something. Throttler pics up this problem. All the other service needs to do is to make http query. **BE AWARE THIS API CAN MISS MORE DATA!**
-
 ```sh
 POST http://localhost:3000/throttler/api/event
 {
-    events: {
-       "pastebin.com/prod/users/kotichka": {
-          points: 900000
-          throttlers:[
-           { max: 1000000, kind: "points"  },
-           { max: 10000000, kind: "points", per: "1d"  },
-           { max: 5, kind: "count", per: "1h"  },
-           { max: 100, kind: "count", per: "1d"  },
-          ]
-       },
-       "pastebin.com/prod/categories/free-cats": {
-          points: 900000     
-          throttlers:[
-           { max: 10000000000, kind: "points", per: "1d"  },
-           { max: 5000, kind: "count", per: "1h"  },
-          ]
-       }
-    }
-}
-```
-
-You response will be
-```sh
-{
-    allow: false,
-    data: {
-       "pastebin.com/prod/users/kotichka": {
-          allow:[
-           true,
-           false,
-           false,
-           true, 
-          ],
-          reason: "> 10000000 points per 1d, > 5 events per 1h"
-       },
-       "pastebin.com/prod/categories/free-cats": { 
-          allow:[
-           true,
-           true,
-          ]
-       }
+  "events": {
+    "pastebin.com/prod/users/kotichka": {
+      "points": 900000,
+      "throttlers": [
+        {
+          "max": 1000000,
+          "kind": "points"
+        },
+        {
+          "max": 10000000,
+          "kind": "points",
+          "per": "1d"
+        },
+        {
+          "max": 5,
+          "kind": "count",
+          "per": "1h"
+        },
+        {
+          "max": 100,
+          "kind": "count",
+          "per": "1d"
+        }
+      ]
     },
-}
-```
+    "pastebin.com/prod/categories/free-cats": {
+      "points": 900000,
+      "throttlers": [
+        {
+          "max": 10000000000,
+          "kind": "points",
+          "per": "1d"
+        },
+        {
+          "max": 5000,
+          "kind": "count",
+          "per": "1h"
+        }
+      ]
+    }
+  }
+}```
 
 Commands:
 ```sh
