@@ -32,13 +32,4 @@ const Server: http.Server = http.createServer(app);
 
 Server.listen(app.get('port'), () => {
     console.log(`Listening on ${app.get('port')}`);
-
-    /*crones.checkEvery7Day.start();
-    crones.checkEveryDay.start();
-    crones.checkEvery12Hour.start();
-    crones.checkEvery2Hour.start();
-    crones.checkEveryHour.start();
-    crones.checkEvery30Minute.start();
-    crones.checkEvery5Minute.start();
-    crones.checkEvery1Minute.start();*/
 });
