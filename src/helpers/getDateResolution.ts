@@ -3,6 +3,7 @@ interface DateResolution {
 }
 
 const dateResolution: DateResolution = {
+    '1000d': 1,
     '7d': 7,
     '1d': 6,
     '12h': 6,

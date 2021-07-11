@@ -3,7 +3,6 @@ import { ResultOfVerification } from '../helpers/interfaces';
 
 import getDateDiff from '../helpers/getDateDiff';
 import getDateResolution from '../helpers/getDateResolution';
-import { eventEntryReference } from '../helpers/references';
 
 const Service = {
     async checkPointsSizeWithMaxPoints(points: number, maxPoints: number): Promise<ResultOfVerification> {
@@ -47,134 +46,102 @@ const Service = {
     addEvents(state: ThrottlerState, events: ThrottlerRequest, now: number): ThrottlerState {
         for (const eventName of Object.keys(events)) {
             for (const throttler of events[eventName].throttlers) {
-                const { points }: { points: number } = events[eventName];
-                const throttlerPer = throttler.per;
+                const throttlerPer = throttler.per || '1000d';
 
-                if (throttlerPer) {
-                    const throttlerResolution = throttler.resolution || getDateResolution[throttlerPer];
-                    if (!state[eventName] || !state[eventName][throttlerPer]) {
-                        const array = new Array(throttlerResolution - 1).fill(null);
+                let eventInState = state[eventName]?.[throttlerPer]!;
 
-                        state[eventName] = {
-                            [throttlerPer]: {
-                                events: [
-                                    ...array,
-                                    {
-                                        count: 1,
-                                        points,
-                                    },
-                                ],
-                                timestamp: now,
-                                timeshift: now,
-                            },
-                        };
+                const throttlerPoints = events[eventName].points;
+                const throttlerResolution =
+                    throttler.resolution || eventInState?.events.length || getDateResolution[throttlerPer];
 
-                        break;
-                    }
+                if (!eventInState) {
+                    const array = new Array(throttlerResolution - 1).fill(null);
 
-                    let eventInState = state[eventName][throttlerPer]!;
-
-                    if (
-                        !eventInState.events ||
-                        !eventInState.timeshift ||
-                        !eventInState.timestamp ||
-                        eventInState.events.length !== throttlerResolution
-                    ) {
-                        const array = new Array(throttlerResolution - 1).fill(null);
-
-                        state[eventName][throttlerPer] = {
+                    state[eventName] = {
+                        ...state[eventName],
+                        [throttlerPer]: {
                             events: [
                                 ...array,
                                 {
                                     count: 1,
-                                    points,
+                                    points: throttlerPoints,
                                 },
                             ],
-                            timestamp: now,
-                            timeshift: now,
-                        };
-                        break;
+                            lastAddedTime: now,
+                            lastUpdatedTime: now,
+                        },
+                    };
+
+                    continue;
+                }
+
+                const lastAddedTimeInPeriod = eventInState.lastAddedTime + getDateDiff[throttlerPer] / throttlerResolution;
+
+                if (lastAddedTimeInPeriod > now) {
+                    const positionOfLastElementInPeriod = throttlerResolution - 1;
+                    const lastElementInPeriod = eventInState.events[positionOfLastElementInPeriod];
+
+                    // use ! because last element will never be null due to time of block of resolution isn't exhausted
+                    eventInState.events[positionOfLastElementInPeriod] = {
+                        count: lastElementInPeriod!.count + 1,
+                        points: lastElementInPeriod!.points + throttlerPoints,
+                    };
+
+                    eventInState = {
+                        events: { ...eventInState.events },
+                        lastAddedTime: now,
+                        lastUpdatedTime: now,
+                    };
+
+                    continue;
+                }
+
+                if (lastAddedTimeInPeriod < now) {
+                    const timeBetweenDates = Math.floor(now - lastAddedTimeInPeriod);
+                    const timeInBlockOfResolution = getDateDiff[throttlerPer] / throttlerResolution;
+
+                    const blocksNeedToDelete = Math.floor(timeBetweenDates / timeInBlockOfResolution);
+
+                    if (blocksNeedToDelete <= 0) continue;
+
+                    if (blocksNeedToDelete === 1) {
+                        eventInState.events.shift();
+                        continue;
                     }
 
-                    const throttlerResolutionDefault = eventInState.events.length;
-                    const timestamp = eventInState.timestamp + getDateDiff[throttlerPer] / throttlerResolutionDefault;
+                    if (blocksNeedToDelete > throttlerResolution) {
+                        eventInState.events.fill(null);
 
-                    if (timestamp > now) {
-                        const lastBlockInEvents = eventInState.events[throttlerResolutionDefault - 1];
+                        let spliceTo = (blocksNeedToDelete % 1000) % 100;
 
-                        if (!lastBlockInEvents) {
-                            eventInState.events[throttlerResolutionDefault - 1] = {
-                                count: 1,
-                                points: points,
-                            };
-                            eventInState = {
-                                events: { ...eventInState.events },
-                                timestamp: now,
-                                timeshift: now,
-                            };
-                        } else {
-                            eventInState.events[throttlerResolutionDefault - 1] = {
-                                count: lastBlockInEvents.count + 1,
-                                points: lastBlockInEvents.points + points,
-                            };
-
-                            eventInState = {
-                                events: { ...eventInState.events },
-                                timestamp: now,
-                                timeshift: now,
-                            };
+                        if (spliceTo > throttlerResolution) {
+                            if (throttlerResolution >= 10) {
+                                spliceTo = spliceTo - throttlerResolution;
+                            } else spliceTo = spliceTo % 10;
                         }
 
-                        break;
+                        eventInState.events.splice(0, spliceTo);
+                    } else {
+                        eventInState.events.splice(0, blocksNeedToDelete);
                     }
 
-                    if (timestamp < now) {
-                        const timeBetweenDates = Math.floor(now - timestamp);
-                        const timeInBlock = getDateDiff[throttlerPer] / throttlerResolutionDefault;
+                    eventInState.events.push({
+                        count: 1,
+                        points: throttlerPoints,
+                    });
 
-                        const blocksNeedToDelete = Math.floor(timeBetweenDates / timeInBlock);
+                    const eventsLength = eventInState.events.length;
+                    const startAt = eventsLength === 0 ? 1 : eventsLength;
 
-                        if (blocksNeedToDelete <= 0) break;
+                    eventInState.events.length = throttlerResolution;
 
-                        if (blocksNeedToDelete === 1) eventInState.events.shift();
-                        else {
-                            if (blocksNeedToDelete > throttlerResolutionDefault) {
-                                eventInState.events.fill(null);
-
-                                let spliceTo = (blocksNeedToDelete % 1000) % 100;
-
-                                if (spliceTo > throttlerResolutionDefault) {
-                                    if (throttlerResolutionDefault >= 10) {
-                                        spliceTo = spliceTo - throttlerResolutionDefault;
-                                    } else spliceTo = spliceTo % 10;
-                                }
-
-                                eventInState.events.splice(0, spliceTo);
-                            } else {
-                                eventInState.events.splice(0, blocksNeedToDelete);
-                            }
-                        }
-
-                        eventInState.events.push({
-                            count: 1,
-                            points: points,
-                        });
-
-                        const eventsLength = eventInState.events.length;
-                        const startAt = eventsLength === 0 ? 0 : eventsLength;
-
-                        eventInState.events.length = throttlerResolutionDefault;
-
-                        eventInState.events.fill(null, startAt, throttlerResolutionDefault);
-
-                        eventInState = {
-                            events: eventInState.events,
-                            timestamp: now,
-                            timeshift: now,
-                        };
-
-                        break;
-                    }
+                    eventInState.events.fill(null, startAt, throttlerResolution);
+                    eventInState = {
+                        events: eventInState.events,
+                        lastAddedTime: now,
+                        lastUpdatedTime: now,
+                    };
+                    console.log(eventInState.events.length);
                 }
             }
         }

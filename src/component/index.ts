@@ -4,7 +4,7 @@ import { ThrottlerRequest, ThrottlerState } from '../helpers/runtypes';
 import { ResultOfEventsVerifications } from '../helpers/interfaces';
 
 export async function throttler(events: ThrottlerRequest, state: ThrottlerState, now: number): Promise<any> {
-    let allow;
+    let allow = true;
     const resultOfEventsVerifications: ResultOfEventsVerifications = {};
 
     for (const eventName of Object.keys(events)) {

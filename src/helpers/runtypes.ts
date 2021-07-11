@@ -34,28 +34,29 @@ const ThrottlerRequest = Dictionary(
 
 type ThrottlerRequest = Static<typeof ThrottlerRequest>;
 
-const ThrottlerStateEvent = Record({
+const ThrottlerStatePeriod = Record({
     events: Array(
         Record({
             count: Number,
             points: Number,
         }).Or(Null)
-    ).Or(Null),
-    timestamp: Number.Or(Null),
-    timeshift: Number.Or(Null),
+    ),
+    lastAddedTime: Number,
+    lastUpdatedTime: Number,
 });
 
-type ThrottlerStateEvent = Static<typeof ThrottlerStateEvent>;
+type ThrottlerStatePeriod = Static<typeof ThrottlerStatePeriod>;
 
 const ThrottlerStateEntry = Partial({
-    '7d': ThrottlerStateEvent,
-    '1d': ThrottlerStateEvent,
-    '12h': ThrottlerStateEvent,
-    '2h': ThrottlerStateEvent,
-    '1h': ThrottlerStateEvent,
-    '30m': ThrottlerStateEvent,
-    '5m': ThrottlerStateEvent,
-    '1m': ThrottlerStateEvent,
+    '1000d': ThrottlerStatePeriod,
+    '7d': ThrottlerStatePeriod,
+    '1d': ThrottlerStatePeriod,
+    '12h': ThrottlerStatePeriod,
+    '2h': ThrottlerStatePeriod,
+    '1h': ThrottlerStatePeriod,
+    '30m': ThrottlerStatePeriod,
+    '5m': ThrottlerStatePeriod,
+    '1m': ThrottlerStatePeriod,
 });
 const ThrottlerStateRuntype = Dictionary(ThrottlerStateEntry);
 
@@ -63,6 +64,7 @@ type ThrottlerState = Static<typeof ThrottlerStateRuntype>;
 type ThrottlerStateEntry = Static<typeof ThrottlerStateEntry>;
 
 export const defaultPerValues: { [period in keyof ThrottlerStateEntry]: number } = {
+    '1000d': 1,
     '7d': 1,
     '1d': 1,
     '12h': 1,
@@ -73,4 +75,4 @@ export const defaultPerValues: { [period in keyof ThrottlerStateEntry]: number }
     '1m': 5,
 };
 
-export { ThrottlerRequest, ThrottlerState, ThrottlerStateEntry, ThrottlerStateEvent };
+export { ThrottlerRequest, ThrottlerState, ThrottlerStateEntry, ThrottlerStatePeriod };
