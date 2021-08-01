@@ -1,6 +1,7 @@
-import { Record, Number, Dictionary, Union, Array, Literal, Partial, Static, Null, Tuple } from 'runtypes';
+import { Record, Number, Dictionary, Union, Array, Literal, Partial, Static, Undefined, Runtype } from 'runtypes';
 
 export const PerRunType = Union(
+    Literal('1000d'),
     Literal('7d'),
     Literal('1d'),
     Literal('12h'),
@@ -11,9 +12,12 @@ export const PerRunType = Union(
     Literal('1m')
 );
 
-export const PerValues = [...PerRunType.alternatives.values()].map(x => x.value);
+export const PerValues = [...PerRunType.alternatives.values()].map((x) => x.value);
 
 export type PerType = Static<typeof PerRunType>;
+
+const KindRunType = Literal('points').Or(Literal('count'));
+export type KindType = Static<typeof KindRunType>;
 
 const ThrottlerRequest = Dictionary(
     Record({
@@ -21,11 +25,11 @@ const ThrottlerRequest = Dictionary(
         throttlers: Array(
             Record({
                 max: Number,
-                kind: Literal('points').Or(Literal('count')),
+                kind: KindRunType,
             }).And(
                 Partial({
                     per: PerRunType,
-                    resolution: Number.withConstraint(n => n >= 1 && n <= 60),
+                    resolution: Number.withConstraint((n) => n >= 1 && n <= 60),
                 })
             )
         ),
@@ -34,13 +38,17 @@ const ThrottlerRequest = Dictionary(
 
 type ThrottlerRequest = Static<typeof ThrottlerRequest>;
 
+const EventInThrottlerStatePeriod = Array(
+    Record({
+        count: Number,
+        points: Number,
+    }).Or(Undefined)
+);
+
+export type EventInThrottlerStatePeriod = Static<typeof EventInThrottlerStatePeriod>;
+
 const ThrottlerStatePeriod = Record({
-    events: Array(
-        Record({
-            count: Number,
-            points: Number,
-        }).Or(Null)
-    ),
+    events: EventInThrottlerStatePeriod,
     lastAddedTime: Number,
     lastUpdatedTime: Number,
 });

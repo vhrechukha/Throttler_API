@@ -2,7 +2,6 @@ import 'dotenv/config';
 import * as http from 'http';
 import * as express from 'express';
 import * as component from './component';
-import bodyParser from 'body-parser';
 
 import { ThrottlerState, ThrottlerRequest } from './helpers/runtypes';
 
@@ -10,13 +9,13 @@ export const state: ThrottlerState = {};
 
 const app: express.Application = express.default();
 
-app.use(bodyParser.json());
+app.use(express.json());
 
 app.post('/api/event', async (req, res) => {
     try {
         const events = ThrottlerRequest.check(req.body.events);
 
-        const data = await component.throttler(events, state, Date.now());
+        const data = await component.throttling(events, state, Date.now());
 
         res.status(200).json(data);
     } catch (e) {

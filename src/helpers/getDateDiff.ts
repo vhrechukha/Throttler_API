@@ -1,9 +1,9 @@
 /* eslint-disable no-irregular-whitespace */
-interface DateDiff {
+interface PeriodDurationsSec {
     [event: string]: number;
 }
 
-const dateDiff: DateDiff = {
+const periodDurationsSec: PeriodDurationsSec = {
     '1000d': 10000 * 24 * 60 * 60 * 1000,
     '7d': 7 * 24 * 60 * 60 * 1000,
     '1d': 24 * 60 * 60 * 1000,
@@ -15,7 +15,7 @@ const dateDiff: DateDiff = {
     '1m': 60 * 1000,
 };
 
-export default dateDiff;
+export default periodDurationsSec;
 
 /*.
  　＿＿

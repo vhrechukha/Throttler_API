@@ -1,8 +1,9 @@
-import { PerType, ThrottlerRequest, ThrottlerState } from '../helpers/runtypes';
+import { KindType, PerType, ThrottlerRequest, ThrottlerState, ThrottlerStatePeriod } from '../helpers/runtypes';
 import { ResultOfVerification } from '../helpers/interfaces';
 
-import getDateDiff from '../helpers/getDateDiff';
+import periodDurationsSec from '../helpers/getDateDiff';
 import getDateResolution from '../helpers/getDateResolution';
+import { longTimePer } from '../helpers/constants';
 
 const Service = {
     async checkPointsSizeWithMaxPoints(points: number, maxPoints: number): Promise<ResultOfVerification> {
@@ -14,27 +15,25 @@ const Service = {
         };
     },
     async checkAmountPerSomeTimeOf(
-        kind: string,
+        kind: KindType,
         per: PerType,
         max: number,
         state: ThrottlerState,
-        eventName: string
+        groupName: string
     ): Promise<ResultOfVerification> {
-        let amount = 0;
+        const groupInState = state[groupName];
 
-        const eventInState = state[eventName];
-
-        if (!eventInState || !eventInState[per]) {
+        if (!groupInState || !groupInState[per]) {
             return {
                 allow: true,
                 reason: '',
             };
         }
 
-        const eventsInEventInState = eventInState[per]?.events!;
+        const groupInStatePer = groupInState[per] as ThrottlerStatePeriod;
+        const groupsInEventInState = groupInStatePer.events;
 
-        if (kind === 'count') amount = eventsInEventInState.reduce((a: number, event) => (event ? a + event.count : 0), 0);
-        else amount = eventsInEventInState.reduce((a: number, event) => (event ? a + event.points : 0), 0);
+        const amount = groupsInEventInState.reduce((a: number, event: any) => (event ? a + event[kind] : 0), 0);
 
         const Allow = max > amount;
 
@@ -43,108 +42,108 @@ const Service = {
             reason: Allow ? '' : `> ${max} ${kind} per ${per}`,
         };
     },
-    addEvents(state: ThrottlerState, events: ThrottlerRequest, now: number): ThrottlerState {
-        for (const eventName of Object.keys(events)) {
-            for (const throttler of events[eventName].throttlers) {
-                const throttlerPer = throttler.per || '1000d';
+    checkIfReasonExist(reason: string | undefined): ResultOfVerification {
+        return {
+            allow: reason ? false : true,
+            reason: reason ? reason.concat(reason) : '',
+        };
+    },
+    addEvents(state: ThrottlerState, throttlerRequests: ThrottlerRequest, now: number): ThrottlerState {
+        for (const groupName of Object.keys(throttlerRequests)) {
+            for (const throttlerForSomePeriod of throttlerRequests[groupName].throttlers) {
+                const throttlerPeriod = throttlerForSomePeriod.per || longTimePer;
 
-                let eventInState = state[eventName]?.[throttlerPer]!;
+                const groupThrottlingStateForPeriod = state[groupName]?.[throttlerPeriod]! as ThrottlerStatePeriod;
 
-                const throttlerPoints = events[eventName].points;
+                const throttlerPoints = throttlerRequests[groupName].points;
                 const throttlerResolution =
-                    throttler.resolution || eventInState?.events.length || getDateResolution[throttlerPer];
+                    throttlerForSomePeriod.resolution ||
+                    groupThrottlingStateForPeriod?.events.length ||
+                    getDateResolution[throttlerPeriod];
 
-                if (!eventInState) {
-                    const array = new Array(throttlerResolution - 1).fill(null);
-
-                    state[eventName] = {
-                        ...state[eventName],
-                        [throttlerPer]: {
-                            events: [
-                                ...array,
-                                {
-                                    count: 1,
-                                    points: throttlerPoints,
-                                },
-                            ],
-                            lastAddedTime: now,
-                            lastUpdatedTime: now,
-                        },
-                    };
+                if (!groupThrottlingStateForPeriod) {
+                    state = this.addInfmAboutPeriodInState(
+                        state,
+                        groupName,
+                        throttlerPeriod,
+                        throttlerResolution,
+                        throttlerPoints,
+                        now
+                    );
 
                     continue;
                 }
 
-                const lastAddedTimeInPeriod = eventInState.lastAddedTime + getDateDiff[throttlerPer] / throttlerResolution;
+                const durationOfSegment = periodDurationsSec[throttlerPeriod] / throttlerResolution;
+                const lastPossibleTimeToAddToCurrentSegment = groupThrottlingStateForPeriod.lastAddedTime + durationOfSegment;
 
-                if (lastAddedTimeInPeriod > now) {
+                const canJustAddToCurrentLastSegment = now < lastPossibleTimeToAddToCurrentSegment;
+                if (canJustAddToCurrentLastSegment) {
                     const positionOfLastElementInPeriod = throttlerResolution - 1;
-                    const lastElementInPeriod = eventInState.events[positionOfLastElementInPeriod];
+                    const lastElementInPeriod = (groupThrottlingStateForPeriod.events[positionOfLastElementInPeriod] ??= {
+                        points: 0,
+                        count: 0,
+                    });
 
-                    // use ! because last element will never be null due to time of block of resolution isn't exhausted
-                    eventInState.events[positionOfLastElementInPeriod] = {
-                        count: lastElementInPeriod!.count + 1,
-                        points: lastElementInPeriod!.points + throttlerPoints,
-                    };
-
-                    eventInState = {
-                        events: { ...eventInState.events },
-                        lastAddedTime: now,
-                        lastUpdatedTime: now,
-                    };
+                    lastElementInPeriod.points += 1;
+                    lastElementInPeriod.count += throttlerPoints;
 
                     continue;
                 }
 
-                if (lastAddedTimeInPeriod < now) {
-                    const timeBetweenDates = Math.floor(now - lastAddedTimeInPeriod);
-                    const timeInBlockOfResolution = getDateDiff[throttlerPer] / throttlerResolution;
-
-                    const blocksNeedToDelete = Math.floor(timeBetweenDates / timeInBlockOfResolution);
+                const needToCreateNewSegments = lastPossibleTimeToAddToCurrentSegment < now;
+                if (needToCreateNewSegments) {
+                    const timeBetweenNowAndLastSegmentFinishTime = Math.floor(now - lastPossibleTimeToAddToCurrentSegment);
+                    const blocksNeedToDelete = Math.floor(timeBetweenNowAndLastSegmentFinishTime / durationOfSegment);
 
                     if (blocksNeedToDelete <= 0) continue;
 
-                    if (blocksNeedToDelete === 1) {
-                        eventInState.events.shift();
-                        continue;
-                    }
-
                     if (blocksNeedToDelete > throttlerResolution) {
-                        eventInState.events.fill(null);
-
-                        let spliceTo = (blocksNeedToDelete % 1000) % 100;
-
-                        if (spliceTo > throttlerResolution) {
-                            if (throttlerResolution >= 10) {
-                                spliceTo = spliceTo - throttlerResolution;
-                            } else spliceTo = spliceTo % 10;
-                        }
-
-                        eventInState.events.splice(0, spliceTo);
+                        state = this.addInfmAboutPeriodInState(
+                            state,
+                            groupName,
+                            throttlerPeriod,
+                            throttlerResolution,
+                            throttlerPoints,
+                            now
+                        );
                     } else {
-                        eventInState.events.splice(0, blocksNeedToDelete);
+                        groupThrottlingStateForPeriod.events.splice(0, blocksNeedToDelete);
+                        groupThrottlingStateForPeriod.events.length = throttlerResolution;
+
+                        groupThrottlingStateForPeriod.events[throttlerResolution - 1] = {
+                            count: 1,
+                            points: throttlerPoints,
+                        };
                     }
-
-                    eventInState.events.push({
-                        count: 1,
-                        points: throttlerPoints,
-                    });
-
-                    const eventsLength = eventInState.events.length;
-                    const startAt = eventsLength === 0 ? 1 : eventsLength;
-
-                    eventInState.events.length = throttlerResolution;
-
-                    eventInState.events.fill(null, startAt, throttlerResolution);
-                    eventInState = {
-                        events: eventInState.events,
-                        lastAddedTime: now,
-                        lastUpdatedTime: now,
-                    };
-                    console.log(eventInState.events.length);
                 }
             }
         }
+
+        return state;
+    },
+    addInfmAboutPeriodInState(
+        state: ThrottlerState,
+        groupName: string,
+        throttlerPeriod: PerType,
+        throttlerResolution: number,
+        points: number,
+        now: number
+    ): ThrottlerState {
+        const eventGroupsArray = new Array(throttlerResolution);
+        eventGroupsArray[eventGroupsArray.length - 1] = {
+            count: 1,
+            points,
+        };
+
+        if (!state[groupName]) {
+            state[groupName] = {};
+        }
+        state[groupName][throttlerPeriod] = {
+            events: eventGroupsArray,
+            lastAddedTime: now,
+            lastUpdatedTime: now,
+        };
 
         return state;
     },

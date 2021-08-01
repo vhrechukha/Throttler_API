@@ -1,53 +1,59 @@
 import service from './service';
 
 import { ThrottlerRequest, ThrottlerState } from '../helpers/runtypes';
-import { ResultOfEventsVerifications } from '../helpers/interfaces';
+import { ResultOfGroupVerifications, ResponseOfResultOfGroupVerification } from '../helpers/interfaces';
 
-export async function throttler(events: ThrottlerRequest, state: ThrottlerState, now: number): Promise<any> {
-    let allow = true;
-    const resultOfEventsVerifications: ResultOfEventsVerifications = {};
+export async function throttling(
+    throttlerRequests: ThrottlerRequest,
+    state: ThrottlerState,
+    now: number
+): Promise<ResponseOfResultOfGroupVerification> {
+    let isAllowToPushGroupsInState = true;
+    const resultOfGroupVerifications: ResultOfGroupVerifications = {};
 
-    for (const eventName of Object.keys(events)) {
-        resultOfEventsVerifications[eventName] = {
+    for (const groupName of Object.keys(throttlerRequests)) {
+        resultOfGroupVerifications[groupName] = {
             allow: [],
             reason: '',
         };
 
-        for (const throttler of events[eventName].throttlers) {
-            const { points }: { points: number } = events[eventName];
-            const resultOfEvent = resultOfEventsVerifications[eventName];
+        for (const throttlerRequest of throttlerRequests[groupName].throttlers) {
+            const { points }: { points: number } = throttlerRequests[groupName];
+            const resultOfGroup = resultOfGroupVerifications[groupName];
 
-            if (throttler.per) {
+            if (throttlerRequest.per) {
                 const result = await service.checkAmountPerSomeTimeOf(
-                    throttler.kind,
-                    throttler.per,
-                    throttler.max,
+                    throttlerRequest.kind,
+                    throttlerRequest.per,
+                    throttlerRequest.max,
                     state,
-                    eventName
+                    groupName
                 );
 
-                resultOfEvent.allow.push(result.allow);
+                resultOfGroup.allow.push(result.allow);
 
-                if (result.reason) {
-                    resultOfEvent.reason = resultOfEvent.reason?.concat(result.reason);
-                    allow = false;
-                }
+                const { reason, allow } = service.checkIfReasonExist(resultOfGroup.reason);
+                resultOfGroup.reason = reason;
+
+                isAllowToPushGroupsInState = allow;
             } else {
-                const result = await service.checkPointsSizeWithMaxPoints(points, throttler.max);
+                const result = await service.checkPointsSizeWithMaxPoints(points, throttlerRequest.max);
 
-                resultOfEvent.allow.push(result.allow);
+                resultOfGroup.allow.push(result.allow);
 
-                if (result.reason) {
-                    resultOfEvent.reason = resultOfEvent.reason?.concat(result.reason);
-                    allow = false;
-                }
+                const { reason, allow } = service.checkIfReasonExist(resultOfGroup.reason);
+                resultOfGroup.reason = reason;
+
+                isAllowToPushGroupsInState = allow;
             }
         }
+
+        if (!resultOfGroupVerifications[groupName].reason) delete resultOfGroupVerifications[groupName].reason;
     }
 
     return {
-        allow,
-        data: resultOfEventsVerifications,
-        state: allow ? service.addEvents(state, events, now) : null,
+        allow: isAllowToPushGroupsInState,
+        data: resultOfGroupVerifications,
+        state: isAllowToPushGroupsInState ? service.addEvents(state, throttlerRequests, now) : null,
     };
 }
