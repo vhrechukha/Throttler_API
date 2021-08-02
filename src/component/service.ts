@@ -53,7 +53,7 @@ const Service = {
             for (const throttlerForSomePeriod of throttlerRequests[groupName].throttlers) {
                 const throttlerPeriod = throttlerForSomePeriod.per || longTimePer;
 
-                const groupThrottlingStateForPeriod = state[groupName]?.[throttlerPeriod]! as ThrottlerStatePeriod;
+                const groupThrottlingStateForPeriod = state[groupName]?.[throttlerPeriod];
 
                 const throttlerPoints = throttlerRequests[groupName].points;
                 const throttlerResolution =
@@ -146,6 +146,36 @@ const Service = {
         };
 
         return state;
+    },
+    clearOldData(state: ThrottlerState, now: number): void {
+        for (const groupName of Object.keys(state)) {
+            for (const [periodName, groupThrottlingState] of Object.entries(state[groupName])) {
+                for (const groupThrottlingStateForPeriod of Object.values(state[groupName])) {
+                    const throttlerResolution = groupThrottlingStateForPeriod.events.length;
+                    const durationOfSegment = periodDurationsSec[periodName] / throttlerResolution;
+                    const lastPossibleTimeToAddToCurrentSegment = groupThrottlingStateForPeriod.lastAddedTime + durationOfSegment;
+
+                    const needToCreateNewSegments = lastPossibleTimeToAddToCurrentSegment < now;
+                    if (needToCreateNewSegments) {
+                        const timeBetweenNowAndLastSegmentFinishTime = Math.floor(now - lastPossibleTimeToAddToCurrentSegment);
+                        const blocksNeedToDelete = Math.floor(timeBetweenNowAndLastSegmentFinishTime / durationOfSegment);
+
+                        if (blocksNeedToDelete <= 0) continue;
+
+                        if (blocksNeedToDelete > throttlerResolution) {
+                            if (Object.keys(groupThrottlingState).length <= 1) {
+                                delete state[groupName];
+
+                                continue;
+                            }
+                        } else {
+                            groupThrottlingStateForPeriod.events.splice(0, blocksNeedToDelete);
+                            groupThrottlingStateForPeriod.events.length = throttlerResolution;
+                        }
+                    }
+                }
+            }
+        }
     },
 };
 
