@@ -4,7 +4,7 @@ import * as express from 'express';
 import * as component from './component';
 
 import { ThrottlerState, ThrottlerRequest } from './helpers/runtypes';
-import { clearOldDataEvery5Minute } from './crones';
+import { clearOldDataEvery5Minute } from './crons';
 
 export const state: ThrottlerState = {};
 
