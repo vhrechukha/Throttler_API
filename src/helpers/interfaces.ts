@@ -1,6 +1,4 @@
-import { ThrottlerState } from './runtypes';
-
-interface ResultOfGroupVerifications {
+interface ResultOfResourceVerifications {
     [event: string]: {
         allow: boolean[];
         reason?: string;
@@ -9,8 +7,7 @@ interface ResultOfGroupVerifications {
 
 interface ResponseOfResultOfGroupVerification {
     allow: boolean;
-    data: ResultOfGroupVerifications;
-    state: null | ThrottlerState;
+    data: ResultOfResourceVerifications;
 }
 
 interface GroupOfEventVerifications {
@@ -20,7 +17,7 @@ interface GroupOfEventVerifications {
 
 interface ResultOfVerification {
     allow: boolean;
-    reason: string;
+    reason?: string;
 }
 
 interface ListOfVerifications {
@@ -29,7 +26,7 @@ interface ListOfVerifications {
 }
 
 export {
-    ResultOfGroupVerifications,
+    ResultOfResourceVerifications,
     ResponseOfResultOfGroupVerification,
     GroupOfEventVerifications,
     ResultOfVerification,
