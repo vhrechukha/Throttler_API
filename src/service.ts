@@ -164,8 +164,6 @@ const Service = {
     clearOldData(state: T_State, now: number): void {
         for (const groupName of Object.keys(state)) {
             for (const [periodName, groupThrottlingState] of Object.entries(state[groupName])) {
-                console.log('period NAme ===', periodName)
-                console.log('group throttling state ===', groupThrottlingState)
                 
                 const throttlerResolution = groupThrottlingState.events.length;
                 const durationOfSegment = periodDurationsSec[periodName] / throttlerResolution;
