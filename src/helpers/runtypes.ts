@@ -11,7 +11,6 @@ import {
 } from 'runtypes';
 
 const RT_PerOfThrottler = Union(
-    Literal('1000d'),
     Literal('7d'),
     Literal('1d'),
     Literal('12h'),
@@ -51,6 +50,8 @@ const RT_StatePeriod = Record({
             points: Number,
         }).Or(Undefined)
     ),
+    points: Number,
+    count: Number,
     lastAddedTime: Number,
     lastUpdatedTime: Number,
 });

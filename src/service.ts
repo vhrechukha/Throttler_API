@@ -9,7 +9,6 @@ import { ResultOfVerification } from './helpers/interfaces';
 
 import periodDurationsSec from './helpers/getDateDiff';
 import getDateResolution from './helpers/getDateResolution';
-import { longTimePer } from './helpers/constants';
 
 const Service = {
     async checkPointsSizeWithMaxPoints(points: number, maxPoints: number): Promise<ResultOfVerification> {
@@ -29,21 +28,15 @@ const Service = {
         state: T_State,
         resourceId: string
     ): Promise<ResultOfVerification> {
-        const resourceIdInState = state[resourceId];
+        const amountOfKindResourceEventsInState = state[resourceId]?.[per]?.[kind];
 
-        if (!resourceIdInState || !resourceIdInState[per]) {
+        if (!amountOfKindResourceEventsInState) {
             return {
                 allow: true,
-                reason: '',
             };
         }
 
-        const groupInStatePer = resourceIdInState[per] as T_StatePeriod;
-        const groupsInEventInState = groupInStatePer.events;
-
-        const amount = groupsInEventInState.reduce((a: number, event: any) => (event ? a + event[kind] : 0), 0);
-
-        const allow = max > amount;
+        const allow = max > amountOfKindResourceEventsInState;
 
         return allow ? { 
             allow 
@@ -55,25 +48,30 @@ const Service = {
     checkIfReasonExist(newReason: string | undefined, previousReasons: string | undefined): ResultOfVerification {
         const previousReasonString = previousReasons ? `${previousReasons}, ` : '';
 
-        return {
-            allow: newReason ? false : true,
-            reason: newReason ? `${previousReasonString}${newReason}` : previousReasons,
+        return newReason ? {
+            allow: false,
+            reason: `${previousReasonString}${newReason}`,
+        } : {
+            allow: true,
+            reason: previousReasons,
         };
     },
     addEvents(state: T_State, throttlerRequests: T_ThrottlerRequests, now: number): T_State {
         for (const resourceId of Object.keys(throttlerRequests)) {
             for (const throttlerForSomePeriod of throttlerRequests[resourceId].throttlers) {
-                const throttlerPeriod = throttlerForSomePeriod.per || longTimePer;
+                const throttlerPeriod = throttlerForSomePeriod.per;
 
-                const resourceIdThrottlingStateForPeriod = state[resourceId]?.[throttlerPeriod];
+                if (!throttlerPeriod) continue;
+
+                const resourceThrottlingStateForPeriod = state[resourceId]?.[throttlerPeriod];
 
                 const throttlerPoints = throttlerRequests[resourceId].points;
                 const throttlerResolution =
                     throttlerForSomePeriod.resolution ||
-                    resourceIdThrottlingStateForPeriod?.events.length ||
+                    resourceThrottlingStateForPeriod?.events.length ||
                     getDateResolution[throttlerPeriod];
 
-                if (!resourceIdThrottlingStateForPeriod) {
+                if (!resourceThrottlingStateForPeriod) {
                     state = this.addInfmAboutPeriodInState(
                         state,
                         resourceId,
@@ -88,19 +86,22 @@ const Service = {
 
                 const durationOfSegment = periodDurationsSec[throttlerPeriod] / throttlerResolution;
                 const lastPossibleTimeToAddToCurrentSegment = 
-                    resourceIdThrottlingStateForPeriod.lastAddedTime
+                    resourceThrottlingStateForPeriod.lastAddedTime
                     + durationOfSegment;
 
-                const canJustAddToCurrentLastSegment = now < lastPossibleTimeToAddToCurrentSegment;
-                if (canJustAddToCurrentLastSegment) {
+                const addToLastSegment = lastPossibleTimeToAddToCurrentSegment >= now;
+                if (addToLastSegment) {
                     const positionOfLastElementInPeriod = throttlerResolution - 1;
-                    const lastElementInPeriod = (resourceIdThrottlingStateForPeriod.events[positionOfLastElementInPeriod] ??= {
+                    const lastElementInPeriod = (resourceThrottlingStateForPeriod.events[positionOfLastElementInPeriod] ??= {
                         points: 0,
                         count: 0,
                     });
 
                     lastElementInPeriod.points += throttlerPoints;
                     lastElementInPeriod.count += 1;
+
+                    resourceThrottlingStateForPeriod.count += 1;
+                    resourceThrottlingStateForPeriod.points += throttlerPoints;
 
                     continue;
                 }
@@ -122,10 +123,18 @@ const Service = {
                             now
                         );
                     } else {
-                        resourceIdThrottlingStateForPeriod.events.splice(0, blocksNeedToDelete);
-                        resourceIdThrottlingStateForPeriod.events.length = throttlerResolution;
+                        resourceThrottlingStateForPeriod.events.splice(0, blocksNeedToDelete);
 
-                        resourceIdThrottlingStateForPeriod.events[throttlerResolution - 1] = {
+                        for (let i = 0; i <= resourceThrottlingStateForPeriod.events.length; i++) {
+                            resourceThrottlingStateForPeriod.count 
+                                += resourceThrottlingStateForPeriod.events[i]?.count!;
+
+                            resourceThrottlingStateForPeriod.points 
+                                += resourceThrottlingStateForPeriod.events[i]?.points!;
+                        }        
+                        resourceThrottlingStateForPeriod.events.length = throttlerResolution;
+
+                        resourceThrottlingStateForPeriod.events[throttlerResolution - 1] = {
                             count: 1,
                             points: throttlerPoints,
                         };
@@ -133,12 +142,12 @@ const Service = {
                 }
             }
         }
-
+        
         return state;
     },
     addInfmAboutPeriodInState(
         state: T_State,
-        groupName: string,
+        resourceId: string,
         throttlerPeriod: T_PerOfThrottler,
         throttlerResolution: number,
         points: number,
@@ -150,23 +159,25 @@ const Service = {
             points,
         };
 
-        if (!state[groupName]) {
-            state[groupName] = {};
-        }
-        state[groupName][throttlerPeriod] = {
-            events: eventGroupsArray,
-            lastAddedTime: now,
-            lastUpdatedTime: now,
+        state[resourceId] = {
+            ...state[resourceId],
+            [throttlerPeriod]: {
+                events: eventGroupsArray,
+                lastAddedTime: now,
+                lastUpdatedTime: now,
+                count: 1,
+                points: points,
+            }
         };
 
         return state;
     },
     clearOldData(state: T_State, now: number): void {
-        for (const groupName of Object.keys(state)) {
-            for (const [periodName, groupThrottlingState] of Object.entries(state[groupName])) {
+        for (const resourceId of Object.keys(state)) {
+            for (const [throttlerPeriod, groupThrottlingState] of Object.entries(state[resourceId])) {
                 
                 const throttlerResolution = groupThrottlingState.events.length;
-                const durationOfSegment = periodDurationsSec[periodName] / throttlerResolution;
+                const durationOfSegment = periodDurationsSec[throttlerPeriod] / throttlerResolution;
                 const lastPossibleTimeToAddToCurrentSegment = groupThrottlingState.lastAddedTime + durationOfSegment;
 
                 const needToCreateNewSegments = lastPossibleTimeToAddToCurrentSegment < now;
@@ -178,7 +189,7 @@ const Service = {
 
                     if (blocksNeedToDelete > throttlerResolution) {
                         if (Object.keys(groupThrottlingState).length <= 1) {
-                            delete state[groupName];
+                            delete state[resourceId];
 
                             continue;
                         }
