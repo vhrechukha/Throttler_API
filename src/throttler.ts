@@ -8,7 +8,7 @@ export default async function throttle(
     throttlerRequests: T_ThrottlerRequests,
     state: T_State,
     now: number
-): Promise<any> {
+): Promise<ResponseOfResultOfGroupVerification> {
     let isAllowToPushInState = true;
     const resultOfResourceIdVerifications: ResultOfResourceVerifications = {};
 
@@ -62,6 +62,5 @@ export default async function throttle(
     return {
         allow: isAllowToPushInState,
         data: resultOfResourceIdVerifications,
-        state,
     };
 }

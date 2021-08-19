@@ -3,7 +3,6 @@ import {
     T_PerOfThrottler, 
     T_ThrottlerRequests, 
     T_State, 
-    T_StatePeriod
 } from './helpers/runtypes';
 import { ResultOfVerification } from './helpers/interfaces';
 
