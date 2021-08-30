@@ -1,4 +1,4 @@
-import service from './service';
+import * as service from './service';
 
 import { T_ThrottlerRequests, T_State } from './helpers/runtypes';
 
@@ -38,7 +38,7 @@ export default async function throttle(
                 resultOfResourceIdVerifications[groupName].allow.push(result.allow);
                 resultOfResourceIdVerifications[groupName].reason = reason;
 
-                isAllowToPushInState = allow;
+                if (isAllowToPushInState) isAllowToPushInState = allow;
             } else {
                 const result = await service.checkPointsSizeWithMaxPoints(points, throttler.max);
                 
@@ -50,14 +50,14 @@ export default async function throttle(
                 resultOfResourceIdVerifications[groupName].allow.push(result.allow);
                 resultOfResourceIdVerifications[groupName].reason = reason;
                 
-                isAllowToPushInState = allow;
+                if (isAllowToPushInState) isAllowToPushInState = allow;
             }
         }
 
         if (!resultOfResourceIdVerifications[groupName].reason) delete resultOfResourceIdVerifications[groupName].reason;
     }
 
-    isAllowToPushInState && service.addEvents(state, throttlerRequests, now);
+    if (isAllowToPushInState) service.addEvents(state, throttlerRequests, now);
 
     return {
         allow: isAllowToPushInState,

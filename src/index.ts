@@ -13,15 +13,11 @@ const app: express.Application = express.default();
 app.use(express.json());
 
 app.post('/api/events', async (req, res) => {
-    try {
-        const events = RT_ThrottlerRequests.check(req.body.events);
+    const events = RT_ThrottlerRequests.check(req.body.events);
 
-        const data = await throttle(events, state, Date.now());
+    const data = await throttle(events, state, Date.now());
 
-        res.status(200).json(data);
-    } catch (e) {
-        res.status(500).send(e);
-    }
+    res.status(200).json(data);
 });
 
 app.set('port', process.env.PORT);
