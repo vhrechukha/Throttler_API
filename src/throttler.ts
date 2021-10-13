@@ -42,7 +42,7 @@ export default async function throttle(
             resultOfResourceIdVerifications[groupName].allow.push(result.allow);
             resultOfResourceIdVerifications[groupName].reason = reason;
 
-            if (isAllowToPushInState) isAllowToPushInState = allow;
+            isAllowToPushInState &&= allow;
         }
 
         if (!resultOfResourceIdVerifications[groupName].reason) delete resultOfResourceIdVerifications[groupName].reason;
