@@ -60,7 +60,7 @@ export const checkAmountPerSomeTimeOf = async (
 ): Promise<ResultOfVerification> => {
         const amountOfKindResourceEventsInState = state[resourceId]?.[per]?.[kind];
 
-        const allow = _.isNil(amountOfKindResourceEventsInState) || max > amountOfKindResourceEventsInState;
+        const allow = !amountOfKindResourceEventsInState || max > amountOfKindResourceEventsInState;
 
         const result: ResultOfVerification = { allow };
         if (!allow) result.reason = `> ${max} ${kind} per ${per}`;
@@ -72,9 +72,9 @@ export const checkIfReasonExist = (
     newReason?: string, 
     previousReasons?: string
 ): ResultOfVerification => {
-    const previousReasonString = !_.isEmpty(previousReasons) ? `${previousReasons}, ` : '';
+    const previousReasonString = !previousReasons ? `${previousReasons}, ` : '';
 
-    return !_.isEmpty(newReason) ? {
+    return newReason ? {
         allow: false,
         reason: `${previousReasonString}, ${newReason}`,
     } : {
@@ -103,7 +103,7 @@ export const addEvents = (
                 getDateResolution[throttlerPeriod];
 
             if (!resourceThrottlingStateForPeriod) {
-                state = addInfmAboutPeriodInState(
+                state = addInformAboutPeriodInState(
                     state,
                     resourceId,
                     throttlerPeriod,
@@ -145,7 +145,7 @@ export const addEvents = (
                 if (blocksNeedToDelete <= 0) continue;
 
                 if (blocksNeedToDelete > throttlerResolution) {
-                    state = addInfmAboutPeriodInState(
+                    state = addInformAboutPeriodInState(
                         state,
                         resourceId,
                         throttlerPeriod,
