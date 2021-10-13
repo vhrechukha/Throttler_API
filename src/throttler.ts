@@ -1,12 +1,12 @@
 import * as service from './service';
 
-import { T_ThrottlerRequests, T_State } from './helpers/runtypes';
+import { ThrottlerRequests, State } from './helpers/runtypes';
 
 import { ResultOfResourceVerifications, ResponseOfResultOfGroupVerification } from './helpers/interfaces';
 
 export default async function throttle(
-    throttlerRequests: T_ThrottlerRequests,
-    state: T_State,
+    throttlerRequests: ThrottlerRequests,
+    state: State,
     now: number
 ): Promise<ResponseOfResultOfGroupVerification> {
     let isAllowToPushInState = true;

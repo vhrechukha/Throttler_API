@@ -3,17 +3,17 @@ import * as http from 'http';
 import * as express from 'express';
 import throttle from './throttler';
 
-import { T_State, RT_ThrottlerRequests } from './helpers/runtypes';
+import { State, RTThrottlerRequests } from './helpers/runtypes';
 import { clearOldDataEvery5Minute } from './crons';
 
-export const state: T_State = {};
+export const state: State = {};
 
 const app: express.Application = express.default();
 
 app.use(express.json());
 
 app.post('/api/events', async (req, res) => {
-    const events = RT_ThrottlerRequests.check(req.body.events);
+    const events = RTThrottlerRequests.check(req.body.events);
 
     const data = await throttle(events, state, Date.now());
 

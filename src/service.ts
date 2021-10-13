@@ -1,23 +1,22 @@
 import { 
-    T_KindOfThrottler,
-    T_PerOfThrottler, 
-    T_ThrottlerRequests, 
-    T_State, 
+    KindOfThrottler,
+    PerOfThrottler,
+    ThrottlerRequests,
+    State,
 } from './helpers/runtypes';
 import { ResultOfVerification } from './helpers/interfaces';
 
 import periodDurationsSec from './helpers/getDateDiff';
 import getDateResolution from './helpers/getDateResolution';
-import _ from 'lodash';
 
-const addInfmAboutPeriodInState = (
-    state: T_State,
+const addInformAboutPeriodInState = (
+    state: State,
     resourceId: string,
-    throttlerPeriod: T_PerOfThrottler,
+    throttlerPeriod: PerOfThrottler,
     throttlerResolution: number,
     points: number,
     now: number
-): T_State => {
+): State => {
     const eventGroupsArray = new Array(throttlerResolution);
     eventGroupsArray[eventGroupsArray.length - 1] = {
         count: 1,
@@ -53,10 +52,10 @@ export const checkPointsSizeWithMaxPoints = async (
 };
 
 export const checkAmountPerSomeTimeOf = async (
-    kind: T_KindOfThrottler,
-    per: T_PerOfThrottler,
+    kind: KindOfThrottler,
+    per: PerOfThrottler,
     max: number,
-    state: T_State,
+    state: State,
     resourceId: string
 ): Promise<ResultOfVerification> => {
         const amountOfKindResourceEventsInState = state[resourceId]?.[per]?.[kind];
@@ -85,10 +84,10 @@ export const checkIfReasonExist = (
 };
 
 export const addEvents = (
-    state: T_State, 
-    throttlerRequests: T_ThrottlerRequests, 
+    state: State,
+    throttlerRequests: ThrottlerRequests,
     now: number
-): T_State => {
+): State => {
     for (const resourceId of Object.keys(throttlerRequests)) {
         for (const throttlerForSomePeriod of throttlerRequests[resourceId].throttlers) {
             const throttlerPeriod = throttlerForSomePeriod.per;
@@ -178,7 +177,7 @@ export const addEvents = (
     return state;
 };
 
-export const clearOldData = (state: T_State, now: number): void => {
+export const clearOldData = (state: State, now: number): void => {
     for (const resourceId of Object.keys(state)) {
         for (const [throttlerPeriod, groupThrottlingState] of Object.entries(state[resourceId])) {
             

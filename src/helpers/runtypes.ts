@@ -10,7 +10,7 @@ import {
     Undefined
 } from 'runtypes';
 
-const RT_PerOfThrottler = Union(
+const RTPerOfThrottler = Union(
     Literal('7d'),
     Literal('1d'),
     Literal('12h'),
@@ -20,30 +20,30 @@ const RT_PerOfThrottler = Union(
     Literal('5m'),
     Literal('1m')
 );
-type T_PerOfThrottler = Static<typeof RT_PerOfThrottler>;
+type PerOfThrottler = Static<typeof RTPerOfThrottler>;
 
-const RT_KindOfThrottler = Literal('points').Or(Literal('count'));
-type T_KindOfThrottler = Static<typeof RT_KindOfThrottler>;
+const RTKindOfThrottler = Literal('points').Or(Literal('count'));
+type KindOfThrottler = Static<typeof RTKindOfThrottler>;
 
-const RT_ThrottlerRequests = Dictionary(
+const RTThrottlerRequests = Dictionary(
     Record({
         points: Number,
         throttlers: Array(
             Record({
                 max: Number,
-                kind: RT_KindOfThrottler,
+                kind: RTKindOfThrottler,
             }).And(
                 Partial({
-                    per: RT_PerOfThrottler,
+                    per: RTPerOfThrottler,
                     resolution: Number.withConstraint((n) => n >= 1 && n <= 60),
                 })
             )
         ),
     })
 );
-type T_ThrottlerRequests = Static<typeof RT_ThrottlerRequests>;
+type ThrottlerRequests = Static<typeof RTThrottlerRequests>;
 
-const RT_StatePeriod = Record({
+const RTStatePeriod = Record({
     events: Array(
         Record({
             count: Number,
@@ -55,30 +55,30 @@ const RT_StatePeriod = Record({
     lastAddedTime: Number,
     lastUpdatedTime: Number,
 });
-type T_StatePeriod = Static<typeof RT_StatePeriod>;
+type StatePeriod = Static<typeof RTStatePeriod>;
 
-const RT_StateEntry = Partial({
-    '1000d': RT_StatePeriod,
-    '7d': RT_StatePeriod,
-    '1d': RT_StatePeriod,
-    '12h': RT_StatePeriod,
-    '2h': RT_StatePeriod,
-    '1h': RT_StatePeriod,
-    '30m': RT_StatePeriod,
-    '5m': RT_StatePeriod,
-    '1m': RT_StatePeriod,
+const RTStateEntry = Partial({
+    '1000d': RTStatePeriod,
+    '7d': RTStatePeriod,
+    '1d': RTStatePeriod,
+    '12h': RTStatePeriod,
+    '2h': RTStatePeriod,
+    '1h': RTStatePeriod,
+    '30m': RTStatePeriod,
+    '5m': RTStatePeriod,
+    '1m': RTStatePeriod,
 });
-type T_StateEntry = Static<typeof RT_StateEntry>;
+type StateEntry = Static<typeof RTStateEntry>;
 
-const RT_State = Dictionary(RT_StateEntry);
-type T_State = Static<typeof RT_State>;
+const RTState = Dictionary(RTStateEntry);
+type State = Static<typeof RTState>;
 
 export { 
-    RT_ThrottlerRequests, 
-    T_ThrottlerRequests, 
-    T_PerOfThrottler, 
-    T_KindOfThrottler, 
-    T_State, 
-    T_StateEntry, 
-    T_StatePeriod 
+    RTThrottlerRequests,
+    ThrottlerRequests,
+    PerOfThrottler,
+    KindOfThrottler,
+    State,
+    StateEntry,
+    StatePeriod
 };
