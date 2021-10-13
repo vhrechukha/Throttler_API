@@ -9,6 +9,7 @@ export default async function throttle(
     state: State,
     now: number
 ): Promise<ResponseOfResultOfGroupVerification> {
+    let result;
     let isAllowToPushInState = true;
     const resultOfResourceIdVerifications: ResultOfResourceVerifications = {};
 
@@ -22,41 +23,32 @@ export default async function throttle(
             const points = throttlerRequests[groupName].points;
 
             if (throttler.per) {
-                const result = await service.checkAmountPerSomeTimeOf(
+                result = await service.checkAmountPerSomeTimeOf(
                     throttler.kind,
                     throttler.per,
                     throttler.max,
                     state,
                     groupName
                 );
-
-                const { reason, allow } = service.checkIfReasonExist(
-                    result.reason, 
-                    resultOfResourceIdVerifications[groupName].reason
-                    );
-
-                resultOfResourceIdVerifications[groupName].allow.push(result.allow);
-                resultOfResourceIdVerifications[groupName].reason = reason;
-
-                if (isAllowToPushInState) isAllowToPushInState = allow;
             } else {
-                const result = await service.checkPointsSizeWithMaxPoints(points, throttler.max);
-                
-                const { reason, allow } = service.checkIfReasonExist(
-                    result.reason, 
-                    resultOfResourceIdVerifications[groupName].reason
-                    );
-
-                resultOfResourceIdVerifications[groupName].allow.push(result.allow);
-                resultOfResourceIdVerifications[groupName].reason = reason;
-                
-                if (isAllowToPushInState) isAllowToPushInState = allow;
+                result = await service.checkPointsSizeWithMaxPoints(points, throttler.max);
             }
+
+            const { reason, allow } = service.checkIfReasonExist(
+                result.reason,
+                resultOfResourceIdVerifications[groupName].reason
+            );
+
+            resultOfResourceIdVerifications[groupName].allow.push(result.allow);
+            resultOfResourceIdVerifications[groupName].reason = reason;
+
+            if (isAllowToPushInState) isAllowToPushInState = allow;
         }
 
         if (!resultOfResourceIdVerifications[groupName].reason) delete resultOfResourceIdVerifications[groupName].reason;
     }
 
+    // check if all throttlers are successfully passed
     if (isAllowToPushInState) service.addEvents(state, throttlerRequests, now);
 
     return {
